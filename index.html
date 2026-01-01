@@ -5,33 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#121212">
     <title>LN Studio</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-            background: #121212; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #121212;
+            color: #808080;
+            overflow-x: hidden;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        .btn-primary { 
+            background: #494458; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            cursor: pointer;
+            width: 100%;
+        }
+        .btn-secondary { 
+            background: #202020; 
             color: #808080; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            cursor: pointer;
+        }
+        .input { 
+            background: #121212; 
+            color: white; 
+            border: none; 
+            padding: 12px 16px; 
+            border-radius: 12px; 
+            width: 100%;
+            outline: none;
+        }
+        .card { 
+            background: #202020; 
+            border-radius: 16px; 
+            padding: 16px; 
+            margin-bottom: 12px;
+        }
+        .tab { 
+            padding: 8px 16px; 
+            color: #808080; 
+            border: none; 
+            background: none; 
+            cursor: pointer; 
+            white-space: nowrap;
         }
         .tab-active { 
             color: white; 
             border-bottom: 2px solid #494458; 
         }
-        .scroll-hidden::-webkit-scrollbar { display: none; }
-        .scroll-hidden { 
-            -ms-overflow-style: none; 
-            scrollbar-width: none; 
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #202020;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px;
+            z-index: 100;
         }
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: #808080;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .nav-btn.active { color: white; }
+        .header {
+            background: #202020;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .scroll-container {
+            overflow-x: auto;
+            display: flex;
+            gap: 24px;
+            padding: 16px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .scroll-container::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script>
-        const React = window.React;
-        const ReactDOM = window.ReactDOM;
+        'use strict';
         const { useState, useEffect } = React;
+        const h = React.createElement;
 
         function App() {
             const [user, setUser] = useState(null);
@@ -44,6 +123,7 @@
             const [activeTab, setActiveTab] = useState('all');
             const [sortBy, setSortBy] = useState('date');
             const [searchQuery, setSearchQuery] = useState('');
+            
             const [loginForm, setLoginForm] = useState({ nickname: '' });
             const [projectForm, setProjectForm] = useState({ 
                 title: '', description: '', poster: '', genres: '', status: 'В процессе' 
@@ -58,15 +138,19 @@
             useEffect(() => {
                 const data = localStorage.getItem('ln-studio');
                 if (data) {
-                    const parsed = JSON.parse(data);
-                    if (parsed.user) { 
-                        setUser(parsed.user); 
-                        setView('library'); 
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (parsed.user) { 
+                            setUser(parsed.user); 
+                            setView('library'); 
+                        }
+                        setProjects(parsed.projects || []);
+                        setCharacters(parsed.characters || []);
+                        setLanguage(parsed.language || 'ru');
+                        setFontSize(parsed.fontSize || 'medium');
+                    } catch (e) {
+                        console.error('Parse error:', e);
                     }
-                    setProjects(parsed.projects || []);
-                    setCharacters(parsed.characters || []);
-                    setLanguage(parsed.language || 'ru');
-                    setFontSize(parsed.fontSize || 'medium');
                 }
             }, []);
 
@@ -78,16 +162,6 @@
                 }
             }, [user, projects, characters, language, fontSize]);
 
-            useEffect(() => {
-                const handleExit = () => { 
-                    if (view === 'editor' && chapterForm.content) {
-                        saveChapter(true); 
-                    }
-                };
-                window.addEventListener('beforeunload', handleExit);
-                return () => window.removeEventListener('beforeunload', handleExit);
-            }, [view, chapterForm]);
-
             const login = () => {
                 if (!loginForm.nickname.trim()) return alert('Введите никнейм!');
                 setUser({ nickname: loginForm.nickname, date: new Date().toISOString() });
@@ -96,9 +170,9 @@
 
             const logout = () => {
                 if (confirm('Выйти?')) {
-                    setUser(null); 
-                    setView('login'); 
-                    setProjects([]); 
+                    setUser(null);
+                    setView('login');
+                    setProjects([]);
                     setCharacters([]);
                     localStorage.removeItem('ln-studio');
                 }
@@ -133,7 +207,9 @@
             };
 
             const saveChapter = (draft) => {
-                if (!chapterForm.title || !chapterForm.content) return;
+                if (!chapterForm.title || !chapterForm.content) {
+                    return alert('Заполните название и текст!');
+                }
                 const ch = { 
                     ...chapterForm, 
                     isDraft: draft, 
@@ -142,7 +218,7 @@
                 };
                 const updated = projects.map(p => {
                     if (p.id === currentProject.id) {
-                        let vols = [...(p.volumes || [])];
+                        let vols = Array.isArray(p.volumes) ? [...p.volumes] : [];
                         let idx = vols.findIndex(v => v.number === ch.volumeNumber);
                         if (idx === -1) {
                             vols.push({ number: ch.volumeNumber, chapters: [ch] });
@@ -158,6 +234,8 @@
                 if (!draft) {
                     setChapterForm({ volumeNumber: 1, number: 1, title: '', content: '', notes: '' });
                     setView('detail');
+                } else {
+                    alert('Сохранено в черновики!');
                 }
             };
 
@@ -173,19 +251,18 @@
             };
 
             const getStats = () => {
-                let totalWords = 0;
-                let inProgress = 0;
-                let completed = 0;
-                let drafts = 0;
+                let totalWords = 0, inProgress = 0, completed = 0, drafts = 0;
                 projects.forEach(p => {
                     if (p.status === 'В процессе') inProgress++;
                     if (p.status === 'Завершено') completed++;
-                    if (p.volumes) {
+                    if (Array.isArray(p.volumes)) {
                         p.volumes.forEach(v => {
-                            v.chapters.forEach(ch => {
-                                totalWords += ch.content.split(/\s+/).filter(x => x).length;
-                                if (ch.isDraft) drafts++;
-                            });
+                            if (Array.isArray(v.chapters)) {
+                                v.chapters.forEach(ch => {
+                                    totalWords += ch.content.split(/\s+/).filter(x => x).length;
+                                    if (ch.isDraft) drafts++;
+                                });
+                            }
                         });
                     }
                 });
@@ -197,11 +274,13 @@
                 if (activeTab === 'completed' && p.status !== 'Завершено') return false;
                 if (activeTab === 'drafts') {
                     let has = false;
-                    if (p.volumes) {
+                    if (Array.isArray(p.volumes)) {
                         p.volumes.forEach(v => {
-                            v.chapters.forEach(ch => { 
-                                if (ch.isDraft) has = true; 
-                            });
+                            if (Array.isArray(v.chapters)) {
+                                v.chapters.forEach(ch => { 
+                                    if (ch.isDraft) has = true; 
+                                });
+                            }
                         });
                     }
                     if (!has) return false;
@@ -217,194 +296,128 @@
                 return a.title.localeCompare(b.title);
             });
 
+            // LOGIN
             if (view === 'login') {
-                return React.createElement('div', { 
-                    className: 'min-h-screen flex items-center justify-center p-6' 
-                },
-                    React.createElement('div', { 
-                        className: 'w-full max-w-sm p-8 rounded-3xl', 
-                        style: { background: '#202020' } 
-                    },
-                        React.createElement('div', { className: 'text-center mb-8' },
-                            React.createElement('div', { className: 'text-6xl mb-4' }, '📚'),
-                            React.createElement('h1', { 
-                                className: 'text-3xl font-bold mb-2', 
-                                style: { color: '#494458' } 
-                            }, 'LN Studio'),
-                            React.createElement('p', { 
-                                style: { color: '#808080' } 
-                            }, 'Редактор лайт новелл')
+                return h('div', { style: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' } },
+                    h('div', { style: { width: '100%', maxWidth: '400px', background: '#202020', padding: '32px', borderRadius: '24px' } },
+                        h('div', { style: { textAlign: 'center', marginBottom: '32px' } },
+                            h('div', { style: { fontSize: '64px', marginBottom: '16px' } }, '📚'),
+                            h('h1', { style: { fontSize: '32px', fontWeight: 'bold', color: '#494458', marginBottom: '8px' } }, 'LN Studio'),
+                            h('p', { style: { color: '#808080' } }, 'Редактор лайт новелл')
                         ),
-                        React.createElement('input', {
+                        h('input', {
                             type: 'text',
                             placeholder: 'Введите никнейм',
                             value: loginForm.nickname,
-                            onChange: (ev) => setLoginForm({ nickname: ev.target.value }),
-                            onKeyPress: (ev) => { if (ev.key === 'Enter') login(); },
-                            className: 'w-full px-4 py-3 rounded-xl mb-4 outline-none',
-                            style: { background: '#121212', color: 'white' }
+                            onChange: (e) => setLoginForm({ nickname: e.target.value }),
+                            onKeyPress: (e) => { if (e.key === 'Enter') login(); },
+                            className: 'input',
+                            style: { marginBottom: '16px' }
                         }),
-                        React.createElement('button', {
-                            onClick: login,
-                            className: 'w-full py-3 rounded-xl font-bold text-white',
-                            style: { background: '#494458' }
-                        }, 'Войти')
+                        h('button', { onClick: login, className: 'btn-primary' }, 'Войти')
                     )
                 );
             }
 
+            // LIBRARY
             if (view === 'library') {
-                return React.createElement('div', { 
-                    className: 'min-h-screen', 
-                    style: { paddingBottom: '80px' } 
-                },
-                    React.createElement('div', { 
-                        className: 'p-4 flex items-center gap-3', 
-                        style: { background: '#202020' } 
-                    },
-                        React.createElement('div', { 
-                            className: 'w-10 h-10 rounded-full flex items-center justify-center text-2xl', 
-                            style: { background: '#494458' } 
-                        }, '📚'),
-                        React.createElement('input', {
+                return h('div', { style: { minHeight: '100vh', paddingBottom: '80px' } },
+                    h('div', { className: 'header' },
+                        h('div', { style: { width: '40px', height: '40px', borderRadius: '50%', background: '#494458', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' } }, '📚'),
+                        h('input', {
                             type: 'text',
                             placeholder: 'Поиск...',
                             value: searchQuery,
-                            onChange: (ev) => setSearchQuery(ev.target.value),
-                            className: 'flex-1 px-4 py-2 rounded-xl outline-none',
-                            style: { background: '#121212', color: 'white' }
+                            onChange: (e) => setSearchQuery(e.target.value),
+                            className: 'input',
+                            style: { flex: 1 }
                         }),
-                        React.createElement('button', { 
-                            onClick: () => setView('settings'), 
-                            className: 'w-10 h-10 text-xl', 
-                            style: { color: '#808080' } 
-                        }, '⚙️'),
-                        React.createElement('button', { 
-                            onClick: () => setView('new'), 
-                            className: 'w-10 h-10 text-2xl', 
-                            style: { color: '#808080' } 
-                        }, '➕')
+                        h('button', { onClick: () => setView('settings'), style: { background: 'none', border: 'none', fontSize: '20px', color: '#808080', cursor: 'pointer' } }, '⚙️'),
+                        h('button', { onClick: () => setView('new'), style: { background: 'none', border: 'none', fontSize: '24px', color: '#808080', cursor: 'pointer' } }, '➕')
                     ),
-                    React.createElement('div', { 
-                        className: 'flex gap-6 px-4 pt-4 overflow-x-auto scroll-hidden' 
-                    },
+                    h('div', { className: 'scroll-container' },
                         ['all', 'progress', 'completed', 'drafts'].map(tab =>
-                            React.createElement('button', {
+                            h('button', {
                                 key: tab,
                                 onClick: () => setActiveTab(tab),
-                                className: 'pb-2 whitespace-nowrap ' + (activeTab === tab ? 'tab-active' : ''),
+                                className: 'tab' + (activeTab === tab ? ' tab-active' : ''),
                                 style: { color: activeTab === tab ? 'white' : '#808080' }
                             }, tab === 'all' ? 'Все' : tab === 'progress' ? 'В процессе' : tab === 'completed' ? 'Завершённые' : 'Черновики')
                         )
                     ),
-                    React.createElement('div', { 
-                        className: 'flex items-center justify-between px-4 py-3' 
-                    },
-                        React.createElement('span', { 
-                            style: { color: '#808080' } 
-                        }, filtered.length + ' всего'),
-                        React.createElement('select', {
+                    h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' } },
+                        h('span', { style: { color: '#808080' } }, filtered.length + ' всего'),
+                        h('select', {
                             value: sortBy,
-                            onChange: (ev) => setSortBy(ev.target.value),
-                            className: 'px-4 py-2 rounded-full outline-none',
-                            style: { background: '#202020', color: '#808080' }
+                            onChange: (e) => setSortBy(e.target.value),
+                            style: { background: '#202020', color: '#808080', border: 'none', padding: '8px 16px', borderRadius: '20px' }
                         },
-                            React.createElement('option', { value: 'date' }, 'По дате'),
-                            React.createElement('option', { value: 'title' }, 'По названию')
+                            h('option', { value: 'date' }, 'По дате'),
+                            h('option', { value: 'title' }, 'По названию')
                         )
                     ),
-                    React.createElement('div', { className: 'px-4 space-y-3' },
+                    h('div', { style: { padding: '0 16px' } },
                         filtered.length === 0 ?
-                            React.createElement('div', { className: 'text-center py-20' },
-                                React.createElement('div', { className: 'text-6xl mb-4' }, '📝'),
-                                React.createElement('p', { style: { color: '#808080' } }, 'Пока нет произведений')
+                            h('div', { style: { textAlign: 'center', paddingTop: '80px' } },
+                                h('div', { style: { fontSize: '64px', marginBottom: '16px' } }, '📝'),
+                                h('p', { style: { color: '#808080' } }, 'Пока нет произведений')
                             )
                             : filtered.map(p => {
-                                let w = 0;
-                                let c = 0;
-                                if (p.volumes) {
+                                let w = 0, c = 0;
+                                if (Array.isArray(p.volumes)) {
                                     p.volumes.forEach(v => {
-                                        v.chapters.forEach(ch => {
-                                            if (!ch.isDraft) {
-                                                w += ch.content.split(/\s+/).filter(x => x).length;
-                                                c++;
-                                            }
-                                        });
+                                        if (Array.isArray(v.chapters)) {
+                                            v.chapters.forEach(ch => {
+                                                if (!ch.isDraft) {
+                                                    w += ch.content.split(/\s+/).filter(x => x).length;
+                                                    c++;
+                                                }
+                                            });
+                                        }
                                     });
                                 }
-                                return React.createElement('div', {
+                                return h('div', {
                                     key: p.id,
                                     onClick: () => openProject(p),
-                                    className: 'flex gap-3 p-3 rounded-2xl cursor-pointer',
-                                    style: { background: '#202020' }
+                                    className: 'card',
+                                    style: { display: 'flex', gap: '12px', cursor: 'pointer' }
                                 },
                                     p.poster ?
-                                        React.createElement('img', { 
-                                            src: p.poster, 
-                                            className: 'w-24 h-32 object-cover rounded-xl flex-shrink-0' 
-                                        })
-                                        : React.createElement('div', { 
-                                            className: 'w-24 h-32 flex items-center justify-center rounded-xl text-4xl flex-shrink-0', 
-                                            style: { background: '#494458' } 
-                                        }, '📖'),
-                                    React.createElement('div', { className: 'flex-1 min-w-0' },
-                                        React.createElement('h3', { 
-                                            className: 'font-bold text-white mb-1 truncate' 
-                                        }, p.title),
-                                        React.createElement('p', { 
-                                            className: 'text-sm mb-2', 
-                                            style: { color: '#808080' } 
-                                        }, c + ' глав • ' + w + ' слов'),
-                                        p.description && React.createElement('p', { 
-                                            className: 'text-sm line-clamp-2', 
-                                            style: { color: '#808080' } 
-                                        }, p.description),
-                                        p.genres && React.createElement('div', { className: 'flex gap-2 mt-2' },
+                                        h('img', { src: p.poster, style: { width: '96px', height: '128px', objectFit: 'cover', borderRadius: '12px', flexShrink: 0 } })
+                                        : h('div', { style: { width: '96px', height: '128px', background: '#494458', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', flexShrink: 0 } }, '📖'),
+                                    h('div', { style: { flex: 1, minWidth: 0 } },
+                                        h('h3', { style: { color: 'white', fontWeight: 'bold', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, p.title),
+                                        h('p', { style: { fontSize: '14px', color: '#808080', marginBottom: '8px' } }, c + ' глав • ' + w + ' слов'),
+                                        p.description && h('p', { style: { fontSize: '14px', color: '#808080', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } }, p.description),
+                                        p.genres && h('div', { style: { display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' } },
                                             p.genres.split(',').slice(0, 2).map((g, i) =>
-                                                React.createElement('span', { 
-                                                    key: i, 
-                                                    className: 'text-xs px-2 py-1 rounded', 
-                                                    style: { background: '#494458', color: 'white' } 
-                                                }, g.trim())
+                                                h('span', { key: i, style: { fontSize: '12px', background: '#494458', color: 'white', padding: '4px 8px', borderRadius: '4px' } }, g.trim())
                                             )
                                         )
                                     ),
-                                    React.createElement('button', { 
-                                        onClick: (ev) => deleteProject(p.id, ev), 
-                                        className: 'text-xl', 
-                                        style: { color: '#808080' } 
-                                    }, '⋮')
+                                    h('button', { onClick: (e) => deleteProject(p.id, e), style: { background: 'none', border: 'none', fontSize: '20px', color: '#808080', cursor: 'pointer' } }, '⋮')
                                 );
                             })
                     ),
-                    React.createElement('div', { 
-                        className: 'fixed bottom-0 left-0 right-0 flex justify-around p-4', 
-                        style: { background: '#202020' } 
-                    },
-                        React.createElement('button', { 
-                            onClick: () => setView('library'), 
-                            className: 'flex flex-col items-center gap-1' 
-                        },
-                            React.createElement('div', { className: 'text-2xl' }, '📚'),
-                            React.createElement('span', { 
-                                className: 'text-xs', 
-                                style: { color: 'white' } 
-                            }, 'Библиотека')
+                    h('div', { className: 'bottom-nav' },
+                        h('button', { className: 'nav-btn active', onClick: () => setView('library') },
+                            h('div', { style: { fontSize: '24px' } }, '📚'),
+                            h('span', null, 'Библиотека')
                         ),
-                        React.createElement('button', { 
-                            onClick: () => setView('profile'), 
-                            className: 'flex flex-col items-center gap-1' 
-                        },
-                            React.createElement('div', { className: 'text-2xl' }, '👤'),
-                            React.createElement('span', { 
-                                className: 'text-xs', 
-                                style: { color: '#808080' } 
-                            }, 'Профиль')
+                        h('button', { className: 'nav-btn', onClick: () => setView('profile') },
+                            h('div', { style: { fontSize: '24px' } }, '👤'),
+                            h('span', null, 'Профиль')
                         )
                     )
                 );
             }
 
-            return React.createElement('div', { 
-                className: 'min-h-screen flex items-center justify-center p-6' 
-           
+            // NEW PROJECT
+            if (view === 'new') {
+                return h('div', { style: { minHeight: '100vh', padding: '16px' } },
+                    h('button', { onClick: () => setView('library'), style: { background: 'none', border: 'none', fontSize: '24px', color: '#808080', marginBottom: '16px', cursor: 'pointer' } }, '←'),
+                    h('div', { style: { maxWidth: '600px', margin: '0 auto', background: '#202020', padding: '24px', borderRadius: '16px' } },
+                        h('input', {
+                            type: 'text',
+                            placeholder: 'Название *',
+                            value: pr
