@@ -2,345 +2,233 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#121212">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LN Studio</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: Arial, sans-serif;
             background: #121212;
             color: #808080;
-            overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent;
         }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
         .btn { 
             background: #494458; 
             color: white; 
             border: none; 
-            padding: 14px 20px; 
-            border-radius: 12px; 
-            font-weight: bold; 
+            padding: 15px; 
+            border-radius: 10px; 
+            width: 100%;
+            font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
-            font-size: 16px;
-            width: 100%;
-            font-family: inherit;
         }
-        .btn:active { opacity: 0.8; }
         .input { 
-            background: #121212; 
+            background: #202020; 
             color: white; 
-            border: none; 
-            padding: 14px 16px; 
-            border-radius: 12px; 
+            border: 1px solid #494458; 
+            padding: 12px; 
+            border-radius: 8px; 
             width: 100%;
             font-size: 16px;
-            font-family: inherit;
+            margin-bottom: 10px;
         }
-        .input:focus { outline: none; }
         .card { 
             background: #202020; 
-            border-radius: 16px; 
-            padding: 16px; 
-            margin-bottom: 12px;
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-bottom: 10px;
         }
-        .header {
-            background: #202020;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-        }
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #202020;
-            display: flex;
-            padding: 12px 0;
-            z-index: 100;
-        }
-        .nav-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            color: #808080;
-            font-size: 12px;
-            text-decoration: none;
-            padding: 8px;
-        }
-        .nav-item.active { color: white; }
-        .tabs {
-            display: flex;
-            gap: 24px;
-            padding: 16px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        .tabs::-webkit-scrollbar { display: none; }
-        .tab {
-            padding: 8px 0;
-            color: #808080;
-            white-space: nowrap;
-            border-bottom: 2px solid transparent;
-            font-size: 15px;
-        }
-        .tab.active {
-            color: white;
-            border-bottom-color: #494458;
-        }
+        .hide { display: none; }
+        h1 { color: white; margin-bottom: 20px; text-align: center; }
+        h2 { color: white; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <div id="app"></div>
-    <script>
-        const state = {
-            user: null,
-            view: 'login',
-            projects: [],
-            currentProject: null,
-            characters: [],
-            fontSize: 'medium',
-            language: 'ru',
-            activeTab: 'all',
-            sortBy: 'date',
-            searchQuery: '',
-            forms: {
-                login: { nickname: '' },
-                project: { title: '', description: '', poster: '', genres: '', status: 'В процессе' },
-                chapter: { volumeNumber: 1, number: 1, title: '', content: '', notes: '' },
-                character: { name: '', role: '', description: '' }
-            }
-        };
 
-        function loadData() {
-            const data = localStorage.getItem('ln-studio');
-            if (data) {
-                try {
-                    const parsed = JSON.parse(data);
-                    if (parsed.user) {
-                        state.user = parsed.user;
-                        state.view = 'library';
-                    }
-                    state.projects = parsed.projects || [];
-                    state.characters = parsed.characters || [];
-                    state.language = parsed.language || 'ru';
-                    state.fontSize = parsed.fontSize || 'medium';
-                } catch (e) {}
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="container">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <div style="font-size: 64px;">📚</div>
+        <h1>LN Studio</h1>
+        <p>Редактор лайт новелл</p>
+    </div>
+    <input type="text" id="nicknameInput" class="input" placeholder="Введите никнейм">
+    <button class="btn" onclick="login()">Войти</button>
+</div>
+
+<!-- LIBRARY SCREEN -->
+<div id="libraryScreen" class="container hide">
+    <h1>📚 Библиотека</h1>
+    <button class="btn" onclick="showNewProject()" style="margin-bottom: 20px;">➕ Создать новое произведение</button>
+    <div id="projectsList"></div>
+    <br>
+    <button class="btn" onclick="showProfile()" style="background: #202020;">👤 Профиль</button>
+    <button class="btn" onclick="logout()" style="background: #dc2626; margin-top: 10px;">Выйти</button>
+</div>
+
+<!-- NEW PROJECT SCREEN -->
+<div id="newProjectScreen" class="container hide">
+    <button onclick="showLibrary()" style="background: none; border: none; color: #808080; font-size: 24px; margin-bottom: 20px; cursor: pointer;">← Назад</button>
+    <h2>Новое произведение</h2>
+    <input type="text" id="projectTitle" class="input" placeholder="Название *">
+    <textarea id="projectDesc" class="input" placeholder="Описание" rows="4"></textarea>
+    <input type="text" id="projectPoster" class="input" placeholder="Ссылка на постер">
+    <input type="text" id="projectGenres" class="input" placeholder="Жанры (через запятую)">
+    <select id="projectStatus" class="input">
+        <option value="В процессе">В процессе</option>
+        <option value="Завершено">Завершено</option>
+        <option value="Заморожено">Заморожено</option>
+    </select>
+    <button class="btn" onclick="createProject()">Создать</button>
+</div>
+
+<!-- PROFILE SCREEN -->
+<div id="profileScreen" class="container hide">
+    <button onclick="showLibrary()" style="background: none; border: none; color: #808080; font-size: 24px; margin-bottom: 20px; cursor: pointer;">← Назад</button>
+    <div style="text-align: center; margin-bottom: 30px;">
+        <div style="width: 80px; height: 80px; border-radius: 50%; background: #494458; display: inline-flex; align-items: center; justify-content: center; font-size: 40px;">👤</div>
+    </div>
+    <div class="card">
+        <div id="profileStats"></div>
+    </div>
+</div>
+
+<script>
+let currentUser = null;
+let projects = [];
+
+// Load data
+function loadData() {
+    const data = localStorage.getItem('ln-studio');
+    if (data) {
+        try {
+            const parsed = JSON.parse(data);
+            currentUser = parsed.user;
+            projects = parsed.projects || [];
+            if (currentUser) {
+                showLibrary();
             }
+        } catch (e) {
+            console.error(e);
         }
+    }
+}
 
-        function saveData() {
-            localStorage.setItem('ln-studio', JSON.stringify({
-                user: state.user,
-                projects: state.projects,
-                characters: state.characters,
-                language: state.language,
-                fontSize: state.fontSize
-            }));
-        }
+// Save data
+function saveData() {
+    localStorage.setItem('ln-studio', JSON.stringify({
+        user: currentUser,
+        projects: projects
+    }));
+}
 
-        function render() {
-            const app = document.getElementById('app');
-            app.innerHTML = '';
-            
-            if (state.view === 'login') {
-                app.innerHTML = `
-                    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;">
-                        <div style="width: 100%; max-width: 400px; background: #202020; padding: 32px; border-radius: 24px;">
-                            <div style="text-align: center; margin-bottom: 32px;">
-                                <div style="font-size: 64px; margin-bottom: 16px;">📚</div>
-                                <h1 style="font-size: 32px; font-weight: bold; color: #494458; margin-bottom: 8px;">LN Studio</h1>
-                                <p style="color: #808080;">Редактор лайт новелл</p>
-                            </div>
-                            <input id="nickname" type="text" placeholder="Введите никнейм" class="input" style="margin-bottom: 16px;" value="${state.forms.login.nickname}">
-                            <button class="btn" onclick="login()">Войти</button>
-                        </div>
-                    </div>
-                `;
-                const input = document.getElementById('nickname');
-                input.addEventListener('input', e => state.forms.login.nickname = e.target.value);
-                input.addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
-            }
-            
-            else if (state.view === 'library') {
-                const filtered = state.projects.filter(p => {
-                    if (state.activeTab === 'progress' && p.status !== 'В процессе') return false;
-                    if (state.activeTab === 'completed' && p.status !== 'Завершено') return false;
-                    if (state.activeTab === 'drafts') {
-                        let has = false;
-                        if (p.volumes) p.volumes.forEach(v => v.chapters.forEach(ch => { if (ch.isDraft) has = true; }));
-                        if (!has) return false;
-                    }
-                    if (state.searchQuery && !p.title.toLowerCase().includes(state.searchQuery.toLowerCase())) return false;
-                    return true;
-                }).sort((a, b) => {
-                    if (state.sortBy === 'date') return new Date(b.date) - new Date(a.date);
-                    return a.title.localeCompare(b.title);
-                });
+// Show/Hide screens
+function showScreen(screenId) {
+    document.querySelectorAll('.container').forEach(el => el.classList.add('hide'));
+    document.getElementById(screenId).classList.remove('hide');
+}
 
-                app.innerHTML = `
-                    <div style="min-height: 100vh; padding-bottom: 80px;">
-                        <div class="header">
-                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #494458; display: flex; align-items: center; justify-content: center; font-size: 20px;">📚</div>
-                            <input id="search" type="text" placeholder="Поиск..." class="input" style="flex: 1;" value="${state.searchQuery}">
-                            <button onclick="state.view='settings'; render();" style="background: none; border: none; font-size: 20px; color: #808080; cursor: pointer;">⚙️</button>
-                            <button onclick="state.view='new'; render();" style="background: none; border: none; font-size: 24px; color: #808080; cursor: pointer;">➕</button>
-                        </div>
-                        <div class="tabs">
-                            ${['all', 'progress', 'completed', 'drafts'].map(tab => `
-                                <div class="tab ${state.activeTab === tab ? 'active' : ''}" onclick="state.activeTab='${tab}'; render();">
-                                    ${tab === 'all' ? 'Все' : tab === 'progress' ? 'В процессе' : tab === 'completed' ? 'Завершённые' : 'Черновики'}
-                                </div>
-                            `).join('')}
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;">
-                            <span>${filtered.length} всего</span>
-                            <select id="sort" style="background: #202020; color: #808080; border: none; padding: 8px 16px; border-radius: 20px;">
-                                <option value="date" ${state.sortBy === 'date' ? 'selected' : ''}>По дате</option>
-                                <option value="title" ${state.sortBy === 'title' ? 'selected' : ''}>По названию</option>
-                            </select>
-                        </div>
-                        <div style="padding: 0 16px;">
-                            ${filtered.length === 0 ? `
-                                <div style="text-align: center; padding-top: 80px;">
-                                    <div style="font-size: 64px; margin-bottom: 16px;">📝</div>
-                                    <p>Пока нет произведений</p>
-                                </div>
-                            ` : filtered.map(p => {
-                                let w = 0, c = 0;
-                                if (p.volumes) p.volumes.forEach(v => v.chapters.forEach(ch => {
-                                    if (!ch.isDraft) { w += ch.content.split(/\s+/).filter(x => x).length; c++; }
-                                }));
-                                return `
-                                    <div class="card" onclick="openProject(${p.id})" style="display: flex; gap: 12px; cursor: pointer;">
-                                        ${p.poster ? 
-                                            `<img src="${p.poster}" style="width: 96px; height: 128px; object-fit: cover; border-radius: 12px; flex-shrink: 0;">` :
-                                            `<div style="width: 96px; height: 128px; background: #494458; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0;">📖</div>`
-                                        }
-                                        <div style="flex: 1; min-width: 0;">
-                                            <h3 style="color: white; font-weight: bold; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.title}</h3>
-                                            <p style="font-size: 14px; margin-bottom: 8px;">${c} глав • ${w} слов</p>
-                                            ${p.description ? `<p style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${p.description}</p>` : ''}
-                                            ${p.genres ? `<div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
-                                                ${p.genres.split(',').slice(0, 2).map(g => `<span style="font-size: 12px; background: #494458; color: white; padding: 4px 8px; border-radius: 4px;">${g.trim()}</span>`).join('')}
-                                            </div>` : ''}
-                                        </div>
-                                        <button onclick="event.stopPropagation(); deleteProject(${p.id});" style="background: none; border: none; font-size: 20px; color: #808080; cursor: pointer;">⋮</button>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                        <div class="bottom-nav">
-                            <a class="nav-item active" onclick="state.view='library'; render();">
-                                <div style="font-size: 24px;">📚</div>
-                                <span>Библиотека</span>
-                            </a>
-                            <a class="nav-item" onclick="state.view='profile'; render();">
-                                <div style="font-size: 24px;">👤</div>
-                                <span>Профиль</span>
-                            </a>
-                        </div>
-                    </div>
-                `;
-                const searchInput = document.getElementById('search');
-                searchInput.addEventListener('input', e => { state.searchQuery = e.target.value; render(); });
-                const sortSelect = document.getElementById('sort');
-                sortSelect.addEventListener('change', e => { state.sortBy = e.target.value; render(); });
-            }
-            
-            else if (state.view === 'new') {
-                app.innerHTML = `
-                    <div style="min-height: 100vh; padding: 16px;">
-                        <button onclick="state.view='library'; render();" style="background: none; border: none; font-size: 24px; color: #808080; margin-bottom: 16px; cursor: pointer;">←</button>
-                        <div style="max-width: 600px; margin: 0 auto; background: #202020; padding: 24px; border-radius: 16px;">
-                            <input id="title" type="text" placeholder="Название *" class="input" style="margin-bottom: 16px;" value="${state.forms.project.title}">
-                            <textarea id="desc" placeholder="Описание" class="input" style="margin-bottom: 16px; min-height: 100px; resize: vertical;">${state.forms.project.description}</textarea>
-                            <input id="poster" type="text" placeholder="Ссылка на постер" class="input" style="margin-bottom: 16px;" value="${state.forms.project.poster}">
-                            <input id="genres" type="text" placeholder="Жанры (через запятую)" class="input" style="margin-bottom: 16px;" value="${state.forms.project.genres}">
-                            <select id="status" class="input" style="margin-bottom: 16px;">
-                                <option value="В процессе" ${state.forms.project.status === 'В процессе' ? 'selected' : ''}>В процессе</option>
-                                <option value="Завершено" ${state.forms.project.status === 'Завершено' ? 'selected' : ''}>Завершено</option>
-                                <option value="Заморожено" ${state.forms.project.status === 'Заморожено' ? 'selected' : ''}>Заморожено</option>
-                            </select>
-                            <div style="display: flex; gap: 12px;">
-                                <button onclick="state.view='library'; render();" style="flex: 1; background: #202020; color: #808080; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer;">Отмена</button>
-                                <button onclick="createProject();" class="btn" style="flex: 1;">Создать</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.getElementById('title').addEventListener('input', e => state.forms.project.title = e.target.value);
-                document.getElementById('desc').addEventListener('input', e => state.forms.project.description = e.target.value);
-                document.getElementById('poster').addEventListener('input', e => state.forms.project.poster = e.target.value);
-                document.getElementById('genres').addEventListener('input', e => state.forms.project.genres = e.target.value);
-                document.getElementById('status').addEventListener('change', e => state.forms.project.status = e.target.value);
-            }
-            
-            else if (state.view === 'profile') {
-                let totalWords = 0, inProgress = 0, completed = 0, drafts = 0;
-                state.projects.forEach(p => {
-                    if (p.status === 'В процессе') inProgress++;
-                    if (p.status === 'Завершено') completed++;
-                    if (p.volumes) p.volumes.forEach(v => v.chapters.forEach(ch => {
-                        totalWords += ch.content.split(/\s+/).filter(x => x).length;
-                        if (ch.isDraft) drafts++;
-                    }));
-                });
+// Login
+function login() {
+    const nickname = document.getElementById('nicknameInput').value.trim();
+    if (!nickname) {
+        alert('Введите никнейм!');
+        return;
+    }
+    currentUser = { nickname: nickname, date: new Date().toISOString() };
+    saveData();
+    showLibrary();
+}
 
-                app.innerHTML = `
-                    <div style="min-height: 100vh; padding-bottom: 80px;">
-                        <div style="background: #202020; padding: 24px;">
-                            <div style="display: flex; justify-content: center; margin-bottom: 24px;">
-                                <div style="width: 80px; height: 80px; border-radius: 50%; background: #494458; display: flex; align-items: center; justify-content: center; font-size: 40px;">👤</div>
-                            </div>
-                            ${[
-                                ['Имя:', state.user.nickname],
-                                ['Новелл:', state.projects.length],
-                                ['Общее количество букв:', totalWords],
-                                ['В процессе:', inProgress],
-                                ['Завершенный:', completed],
-                                ['Черновик:', drafts]
-                            ].map(([label, value]) => `
-                                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #121212;">
-                                    <span style="color: #808080;">${label}</span>
-                                    <span style="color: white;">${value}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <div class="bottom-nav">
-                            <a class="nav-item" onclick="state.view='library'; render();">
-                                <div style="font-size: 24px;">📚</div>
-                                <span>Библиотека</span>
-                            </a>
-                            <a class="nav-item active" onclick="state.view='profile'; render();">
-                                <div style="font-size: 24px;">👤</div>
-                                <span>Профиль</span>
-                            </a>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            else if (state.view === 'settings') {
-                app.innerHTML = `
-                    <div style="min-height: 100vh; padding: 16px;">
-                        <button onclick="state.view='library'; render();" style="background: none; border: none; font-size: 24px; color: #808080; margin-bottom: 16px; cursor: pointer;">←</button>
-                        <div style="max-width: 600px; margin: 0 auto; background: #202020; padding: 24px; border-radius: 16px;">
-                            <div style="margin-bottom: 24px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                    <span>Язык:</span>
-                                    <select id="lang" style="background: #121212; color: white; padding: 8px 16px; border-radius: 8px; border: none;">
-                                        <option value="ru" ${state.language === 'ru' ? 'selected' : ''}>🇷🇺 Русский</option>
-                                        <option value="en" ${state.language === 'en' ? 'selected' : ''}>🇬🇧 English</option>
-                                        <option value="ja" ${state.language === 'ja' ? 'selected' : ''}>🇯🇵 日本語</option>
-                                        <option value="zh" ${state.language === 'zh' ? 'selected' : ''}>🇨🇳 中文</option>
-                                    </select>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: cen
+// Logout
+function logout() {
+    if (!confirm('Выйти?')) return;
+    currentUser = null;
+    projects = [];
+    localStorage.removeItem('ln-studio');
+    showScreen('loginScreen');
+}
+
+// Show Library
+function showLibrary() {
+    showScreen('libraryScreen');
+    renderProjects();
+}
+
+// Render projects
+function renderProjects() {
+    const list = document.getElementById('projectsList');
+    if (projects.length === 0) {
+        list.innerHTML = '<div class="card"><p style="text-align: center; color: #808080;">Пока нет произведений</p></div>';
+        return;
+    }
+    list.innerHTML = projects.map(p => `
+        <div class="card">
+            <h3 style="color: white; margin-bottom: 10px;">${p.title}</h3>
+            <p style="font-size: 14px; margin-bottom: 10px;">Автор: ${p.author}</p>
+            ${p.description ? `<p style="font-size: 14px; margin-bottom: 10px;">${p.description}</p>` : ''}
+            <button onclick="deleteProject(${p.id})" style="background: #dc2626; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">🗑️ Удалить</button>
+        </div>
+    `).join('');
+}
+
+// Show new project screen
+function showNewProject() {
+    showScreen('newProjectScreen');
+    document.getElementById('projectTitle').value = '';
+    document.getElementById('projectDesc').value = '';
+    document.getElementById('projectPoster').value = '';
+    document.getElementById('projectGenres').value = '';
+}
+
+// Create project
+function createProject() {
+    const title = document.getElementById('projectTitle').value.trim();
+    if (!title) {
+        alert('Введите название!');
+        return;
+    }
+    
+    const project = {
+        id: Date.now(),
+        title: title,
+        description: document.getElementById('projectDesc').value,
+        poster: document.getElementById('projectPoster').value,
+        genres: document.getElementById('projectGenres').value,
+        status: document.getElementById('projectStatus').value,
+        author: currentUser.nickname,
+        date: new Date().toISOString(),
+        volumes: []
+    };
+    
+    projects.push(project);
+    saveData();
+    showLibrary();
+}
+
+// Delete project
+function deleteProject(id) {
+    if (!confirm('Удалить произведение?')) return;
+    projects = projects.filter(p => p.id !== id);
+    saveData();
+    renderProjects();
+}
+
+// Show profile
+function showProfile() {
+    showScreen('profileScreen');
+    const stats = document.getElementById('profileStats');
+    stats.innerHTML = `
+        <p style="padding: 10px 0; border-bottom: 1px solid #121212;"><strong>Имя:</strong> ${currentUser.nickname}</p>
+        <p style="padding: 10px 0; border-bottom: 1px solid #121212;"><strong>Новелл:</strong> ${projects.length}</p>
+        <p style="padding: 10px 0;"><strong>Дата регистрации:</strong> ${new Date(currentUser.date).toLocaleDateString()}</p>
+    `;
+}
+
+// Init
+loadData();
+</script>
+
+</body>
+</html>
