@@ -2,89 +2,48 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#121212">
     <title>LN Studio</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #121212;
             color: #808080;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
-        .container { max-width: 100%; margin: 0 auto; }
-        .btn-primary { 
+        .btn { 
             background: #494458; 
             color: white; 
             border: none; 
-            padding: 12px 24px; 
+            padding: 14px 20px; 
             border-radius: 12px; 
             font-weight: bold; 
             cursor: pointer;
+            font-size: 16px;
             width: 100%;
+            font-family: inherit;
         }
-        .btn-secondary { 
-            background: #202020; 
-            color: #808080; 
-            border: none; 
-            padding: 12px 24px; 
-            border-radius: 12px; 
-            font-weight: bold; 
-            cursor: pointer;
-        }
+        .btn:active { opacity: 0.8; }
         .input { 
             background: #121212; 
             color: white; 
             border: none; 
-            padding: 12px 16px; 
+            padding: 14px 16px; 
             border-radius: 12px; 
             width: 100%;
-            outline: none;
+            font-size: 16px;
+            font-family: inherit;
         }
+        .input:focus { outline: none; }
         .card { 
             background: #202020; 
             border-radius: 16px; 
             padding: 16px; 
             margin-bottom: 12px;
         }
-        .tab { 
-            padding: 8px 16px; 
-            color: #808080; 
-            border: none; 
-            background: none; 
-            cursor: pointer; 
-            white-space: nowrap;
-        }
-        .tab-active { 
-            color: white; 
-            border-bottom: 2px solid #494458; 
-        }
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #202020;
-            display: flex;
-            justify-content: space-around;
-            padding: 12px;
-            z-index: 100;
-        }
-        .nav-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            background: none;
-            border: none;
-            color: #808080;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .nav-btn.active { color: white; }
         .header {
             background: #202020;
             padding: 16px;
@@ -95,329 +54,293 @@
             top: 0;
             z-index: 50;
         }
-        .scroll-container {
-            overflow-x: auto;
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #202020;
+            display: flex;
+            padding: 12px 0;
+            z-index: 100;
+        }
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #808080;
+            font-size: 12px;
+            text-decoration: none;
+            padding: 8px;
+        }
+        .nav-item.active { color: white; }
+        .tabs {
             display: flex;
             gap: 24px;
             padding: 16px;
+            overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        .scroll-container::-webkit-scrollbar { display: none; }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab {
+            padding: 8px 0;
+            color: #808080;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            font-size: 15px;
+        }
+        .tab.active {
+            color: white;
+            border-bottom-color: #494458;
+        }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="app"></div>
     <script>
-        'use strict';
-        const { useState, useEffect } = React;
-        const h = React.createElement;
+        const state = {
+            user: null,
+            view: 'login',
+            projects: [],
+            currentProject: null,
+            characters: [],
+            fontSize: 'medium',
+            language: 'ru',
+            activeTab: 'all',
+            sortBy: 'date',
+            searchQuery: '',
+            forms: {
+                login: { nickname: '' },
+                project: { title: '', description: '', poster: '', genres: '', status: 'В процессе' },
+                chapter: { volumeNumber: 1, number: 1, title: '', content: '', notes: '' },
+                character: { name: '', role: '', description: '' }
+            }
+        };
 
-        function App() {
-            const [user, setUser] = useState(null);
-            const [view, setView] = useState('login');
-            const [projects, setProjects] = useState([]);
-            const [currentProject, setCurrentProject] = useState(null);
-            const [characters, setCharacters] = useState([]);
-            const [fontSize, setFontSize] = useState('medium');
-            const [language, setLanguage] = useState('ru');
-            const [activeTab, setActiveTab] = useState('all');
-            const [sortBy, setSortBy] = useState('date');
-            const [searchQuery, setSearchQuery] = useState('');
+        function loadData() {
+            const data = localStorage.getItem('ln-studio');
+            if (data) {
+                try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.user) {
+                        state.user = parsed.user;
+                        state.view = 'library';
+                    }
+                    state.projects = parsed.projects || [];
+                    state.characters = parsed.characters || [];
+                    state.language = parsed.language || 'ru';
+                    state.fontSize = parsed.fontSize || 'medium';
+                } catch (e) {}
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('ln-studio', JSON.stringify({
+                user: state.user,
+                projects: state.projects,
+                characters: state.characters,
+                language: state.language,
+                fontSize: state.fontSize
+            }));
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = '';
             
-            const [loginForm, setLoginForm] = useState({ nickname: '' });
-            const [projectForm, setProjectForm] = useState({ 
-                title: '', description: '', poster: '', genres: '', status: 'В процессе' 
-            });
-            const [chapterForm, setChapterForm] = useState({ 
-                volumeNumber: 1, number: 1, title: '', content: '', notes: '' 
-            });
-            const [characterForm, setCharacterForm] = useState({ 
-                name: '', role: '', description: '' 
-            });
-
-            useEffect(() => {
-                const data = localStorage.getItem('ln-studio');
-                if (data) {
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (parsed.user) { 
-                            setUser(parsed.user); 
-                            setView('library'); 
-                        }
-                        setProjects(parsed.projects || []);
-                        setCharacters(parsed.characters || []);
-                        setLanguage(parsed.language || 'ru');
-                        setFontSize(parsed.fontSize || 'medium');
-                    } catch (e) {
-                        console.error('Parse error:', e);
+            if (state.view === 'login') {
+                app.innerHTML = `
+                    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;">
+                        <div style="width: 100%; max-width: 400px; background: #202020; padding: 32px; border-radius: 24px;">
+                            <div style="text-align: center; margin-bottom: 32px;">
+                                <div style="font-size: 64px; margin-bottom: 16px;">📚</div>
+                                <h1 style="font-size: 32px; font-weight: bold; color: #494458; margin-bottom: 8px;">LN Studio</h1>
+                                <p style="color: #808080;">Редактор лайт новелл</p>
+                            </div>
+                            <input id="nickname" type="text" placeholder="Введите никнейм" class="input" style="margin-bottom: 16px;" value="${state.forms.login.nickname}">
+                            <button class="btn" onclick="login()">Войти</button>
+                        </div>
+                    </div>
+                `;
+                const input = document.getElementById('nickname');
+                input.addEventListener('input', e => state.forms.login.nickname = e.target.value);
+                input.addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
+            }
+            
+            else if (state.view === 'library') {
+                const filtered = state.projects.filter(p => {
+                    if (state.activeTab === 'progress' && p.status !== 'В процессе') return false;
+                    if (state.activeTab === 'completed' && p.status !== 'Завершено') return false;
+                    if (state.activeTab === 'drafts') {
+                        let has = false;
+                        if (p.volumes) p.volumes.forEach(v => v.chapters.forEach(ch => { if (ch.isDraft) has = true; }));
+                        if (!has) return false;
                     }
-                }
-            }, []);
-
-            useEffect(() => {
-                if (user) {
-                    localStorage.setItem('ln-studio', JSON.stringify({ 
-                        user, projects, characters, language, fontSize 
-                    }));
-                }
-            }, [user, projects, characters, language, fontSize]);
-
-            const login = () => {
-                if (!loginForm.nickname.trim()) return alert('Введите никнейм!');
-                setUser({ nickname: loginForm.nickname, date: new Date().toISOString() });
-                setView('library');
-            };
-
-            const logout = () => {
-                if (confirm('Выйти?')) {
-                    setUser(null);
-                    setView('login');
-                    setProjects([]);
-                    setCharacters([]);
-                    localStorage.removeItem('ln-studio');
-                }
-            };
-
-            const createProject = () => {
-                if (!projectForm.title) return alert('Введите название!');
-                const p = { 
-                    ...projectForm, 
-                    id: Date.now(), 
-                    volumes: [], 
-                    author: user.nickname, 
-                    date: new Date().toISOString() 
-                };
-                setProjects([...projects, p]);
-                setProjectForm({ 
-                    title: '', description: '', poster: '', genres: '', status: 'В процессе' 
+                    if (state.searchQuery && !p.title.toLowerCase().includes(state.searchQuery.toLowerCase())) return false;
+                    return true;
+                }).sort((a, b) => {
+                    if (state.sortBy === 'date') return new Date(b.date) - new Date(a.date);
+                    return a.title.localeCompare(b.title);
                 });
-                setView('library');
-            };
 
-            const deleteProject = (id, ev) => {
-                ev.stopPropagation();
-                if (confirm('Удалить?')) {
-                    setProjects(projects.filter(p => p.id !== id));
-                }
-            };
-
-            const openProject = (p) => { 
-                setCurrentProject(p); 
-                setView('detail'); 
-            };
-
-            const saveChapter = (draft) => {
-                if (!chapterForm.title || !chapterForm.content) {
-                    return alert('Заполните название и текст!');
-                }
-                const ch = { 
-                    ...chapterForm, 
-                    isDraft: draft, 
-                    id: Date.now(), 
-                    date: new Date().toISOString() 
-                };
-                const updated = projects.map(p => {
-                    if (p.id === currentProject.id) {
-                        let vols = Array.isArray(p.volumes) ? [...p.volumes] : [];
-                        let idx = vols.findIndex(v => v.number === ch.volumeNumber);
-                        if (idx === -1) {
-                            vols.push({ number: ch.volumeNumber, chapters: [ch] });
-                        } else {
-                            vols[idx].chapters.push(ch);
-                        }
-                        return { ...p, volumes: vols };
-                    }
-                    return p;
-                });
-                setProjects(updated);
-                setCurrentProject(updated.find(p => p.id === currentProject.id));
-                if (!draft) {
-                    setChapterForm({ volumeNumber: 1, number: 1, title: '', content: '', notes: '' });
-                    setView('detail');
-                } else {
-                    alert('Сохранено в черновики!');
-                }
-            };
-
-            const addCharacter = () => {
-                if (!characterForm.name) return alert('Введите имя!');
-                const c = { 
-                    ...characterForm, 
-                    id: Date.now(), 
-                    projectId: currentProject.id 
-                };
-                setCharacters([...characters, c]);
-                setCharacterForm({ name: '', role: '', description: '' });
-            };
-
-            const getStats = () => {
+                app.innerHTML = `
+                    <div style="min-height: 100vh; padding-bottom: 80px;">
+                        <div class="header">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #494458; display: flex; align-items: center; justify-content: center; font-size: 20px;">📚</div>
+                            <input id="search" type="text" placeholder="Поиск..." class="input" style="flex: 1;" value="${state.searchQuery}">
+                            <button onclick="state.view='settings'; render();" style="background: none; border: none; font-size: 20px; color: #808080; cursor: pointer;">⚙️</button>
+                            <button onclick="state.view='new'; render();" style="background: none; border: none; font-size: 24px; color: #808080; cursor: pointer;">➕</button>
+                        </div>
+                        <div class="tabs">
+                            ${['all', 'progress', 'completed', 'drafts'].map(tab => `
+                                <div class="tab ${state.activeTab === tab ? 'active' : ''}" onclick="state.activeTab='${tab}'; render();">
+                                    ${tab === 'all' ? 'Все' : tab === 'progress' ? 'В процессе' : tab === 'completed' ? 'Завершённые' : 'Черновики'}
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;">
+                            <span>${filtered.length} всего</span>
+                            <select id="sort" style="background: #202020; color: #808080; border: none; padding: 8px 16px; border-radius: 20px;">
+                                <option value="date" ${state.sortBy === 'date' ? 'selected' : ''}>По дате</option>
+                                <option value="title" ${state.sortBy === 'title' ? 'selected' : ''}>По названию</option>
+                            </select>
+                        </div>
+                        <div style="padding: 0 16px;">
+                            ${filtered.length === 0 ? `
+                                <div style="text-align: center; padding-top: 80px;">
+                                    <div style="font-size: 64px; margin-bottom: 16px;">📝</div>
+                                    <p>Пока нет произведений</p>
+                                </div>
+                            ` : filtered.map(p => {
+                                let w = 0, c = 0;
+                                if (p.volumes) p.volumes.forEach(v => v.chapters.forEach(ch => {
+                                    if (!ch.isDraft) { w += ch.content.split(/\s+/).filter(x => x).length; c++; }
+                                }));
+                                return `
+                                    <div class="card" onclick="openProject(${p.id})" style="display: flex; gap: 12px; cursor: pointer;">
+                                        ${p.poster ? 
+                                            `<img src="${p.poster}" style="width: 96px; height: 128px; object-fit: cover; border-radius: 12px; flex-shrink: 0;">` :
+                                            `<div style="width: 96px; height: 128px; background: #494458; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0;">📖</div>`
+                                        }
+                                        <div style="flex: 1; min-width: 0;">
+                                            <h3 style="color: white; font-weight: bold; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.title}</h3>
+                                            <p style="font-size: 14px; margin-bottom: 8px;">${c} глав • ${w} слов</p>
+                                            ${p.description ? `<p style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${p.description}</p>` : ''}
+                                            ${p.genres ? `<div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                                ${p.genres.split(',').slice(0, 2).map(g => `<span style="font-size: 12px; background: #494458; color: white; padding: 4px 8px; border-radius: 4px;">${g.trim()}</span>`).join('')}
+                                            </div>` : ''}
+                                        </div>
+                                        <button onclick="event.stopPropagation(); deleteProject(${p.id});" style="background: none; border: none; font-size: 20px; color: #808080; cursor: pointer;">⋮</button>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="bottom-nav">
+                            <a class="nav-item active" onclick="state.view='library'; render();">
+                                <div style="font-size: 24px;">📚</div>
+                                <span>Библиотека</span>
+                            </a>
+                            <a class="nav-item" onclick="state.view='profile'; render();">
+                                <div style="font-size: 24px;">👤</div>
+                                <span>Профиль</span>
+                            </a>
+                        </div>
+                    </div>
+                `;
+                const searchInput = document.getElementById('search');
+                searchInput.addEventListener('input', e => { state.searchQuery = e.target.value; render(); });
+                const sortSelect = document.getElementById('sort');
+                sortSelect.addEventListener('change', e => { state.sortBy = e.target.value; render(); });
+            }
+            
+            else if (state.view === 'new') {
+                app.innerHTML = `
+                    <div style="min-height: 100vh; padding: 16px;">
+                        <button onclick="state.view='library'; render();" style="background: none; border: none; font-size: 24px; color: #808080; margin-bottom: 16px; cursor: pointer;">←</button>
+                        <div style="max-width: 600px; margin: 0 auto; background: #202020; padding: 24px; border-radius: 16px;">
+                            <input id="title" type="text" placeholder="Название *" class="input" style="margin-bottom: 16px;" value="${state.forms.project.title}">
+                            <textarea id="desc" placeholder="Описание" class="input" style="margin-bottom: 16px; min-height: 100px; resize: vertical;">${state.forms.project.description}</textarea>
+                            <input id="poster" type="text" placeholder="Ссылка на постер" class="input" style="margin-bottom: 16px;" value="${state.forms.project.poster}">
+                            <input id="genres" type="text" placeholder="Жанры (через запятую)" class="input" style="margin-bottom: 16px;" value="${state.forms.project.genres}">
+                            <select id="status" class="input" style="margin-bottom: 16px;">
+                                <option value="В процессе" ${state.forms.project.status === 'В процессе' ? 'selected' : ''}>В процессе</option>
+                                <option value="Завершено" ${state.forms.project.status === 'Завершено' ? 'selected' : ''}>Завершено</option>
+                                <option value="Заморожено" ${state.forms.project.status === 'Заморожено' ? 'selected' : ''}>Заморожено</option>
+                            </select>
+                            <div style="display: flex; gap: 12px;">
+                                <button onclick="state.view='library'; render();" style="flex: 1; background: #202020; color: #808080; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer;">Отмена</button>
+                                <button onclick="createProject();" class="btn" style="flex: 1;">Создать</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('title').addEventListener('input', e => state.forms.project.title = e.target.value);
+                document.getElementById('desc').addEventListener('input', e => state.forms.project.description = e.target.value);
+                document.getElementById('poster').addEventListener('input', e => state.forms.project.poster = e.target.value);
+                document.getElementById('genres').addEventListener('input', e => state.forms.project.genres = e.target.value);
+                document.getElementById('status').addEventListener('change', e => state.forms.project.status = e.target.value);
+            }
+            
+            else if (state.view === 'profile') {
                 let totalWords = 0, inProgress = 0, completed = 0, drafts = 0;
-                projects.forEach(p => {
+                state.projects.forEach(p => {
                     if (p.status === 'В процессе') inProgress++;
                     if (p.status === 'Завершено') completed++;
-                    if (Array.isArray(p.volumes)) {
-                        p.volumes.forEach(v => {
-                            if (Array.isArray(v.chapters)) {
-                                v.chapters.forEach(ch => {
-                                    totalWords += ch.content.split(/\s+/).filter(x => x).length;
-                                    if (ch.isDraft) drafts++;
-                                });
-                            }
-                        });
-                    }
+                    if (p.volumes) p.volumes.forEach(v => v.chapters.forEach(ch => {
+                        totalWords += ch.content.split(/\s+/).filter(x => x).length;
+                        if (ch.isDraft) drafts++;
+                    }));
                 });
-                return { totalWords, novels: projects.length, inProgress, completed, drafts };
-            };
 
-            const filtered = projects.filter(p => {
-                if (activeTab === 'progress' && p.status !== 'В процессе') return false;
-                if (activeTab === 'completed' && p.status !== 'Завершено') return false;
-                if (activeTab === 'drafts') {
-                    let has = false;
-                    if (Array.isArray(p.volumes)) {
-                        p.volumes.forEach(v => {
-                            if (Array.isArray(v.chapters)) {
-                                v.chapters.forEach(ch => { 
-                                    if (ch.isDraft) has = true; 
-                                });
-                            }
-                        });
-                    }
-                    if (!has) return false;
-                }
-                if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-                    return false;
-                }
-                return true;
-            }).sort((a, b) => {
-                if (sortBy === 'date') {
-                    return new Date(b.date) - new Date(a.date);
-                }
-                return a.title.localeCompare(b.title);
-            });
-
-            // LOGIN
-            if (view === 'login') {
-                return h('div', { style: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' } },
-                    h('div', { style: { width: '100%', maxWidth: '400px', background: '#202020', padding: '32px', borderRadius: '24px' } },
-                        h('div', { style: { textAlign: 'center', marginBottom: '32px' } },
-                            h('div', { style: { fontSize: '64px', marginBottom: '16px' } }, '📚'),
-                            h('h1', { style: { fontSize: '32px', fontWeight: 'bold', color: '#494458', marginBottom: '8px' } }, 'LN Studio'),
-                            h('p', { style: { color: '#808080' } }, 'Редактор лайт новелл')
-                        ),
-                        h('input', {
-                            type: 'text',
-                            placeholder: 'Введите никнейм',
-                            value: loginForm.nickname,
-                            onChange: (e) => setLoginForm({ nickname: e.target.value }),
-                            onKeyPress: (e) => { if (e.key === 'Enter') login(); },
-                            className: 'input',
-                            style: { marginBottom: '16px' }
-                        }),
-                        h('button', { onClick: login, className: 'btn-primary' }, 'Войти')
-                    )
-                );
+                app.innerHTML = `
+                    <div style="min-height: 100vh; padding-bottom: 80px;">
+                        <div style="background: #202020; padding: 24px;">
+                            <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+                                <div style="width: 80px; height: 80px; border-radius: 50%; background: #494458; display: flex; align-items: center; justify-content: center; font-size: 40px;">👤</div>
+                            </div>
+                            ${[
+                                ['Имя:', state.user.nickname],
+                                ['Новелл:', state.projects.length],
+                                ['Общее количество букв:', totalWords],
+                                ['В процессе:', inProgress],
+                                ['Завершенный:', completed],
+                                ['Черновик:', drafts]
+                            ].map(([label, value]) => `
+                                <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #121212;">
+                                    <span style="color: #808080;">${label}</span>
+                                    <span style="color: white;">${value}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="bottom-nav">
+                            <a class="nav-item" onclick="state.view='library'; render();">
+                                <div style="font-size: 24px;">📚</div>
+                                <span>Библиотека</span>
+                            </a>
+                            <a class="nav-item active" onclick="state.view='profile'; render();">
+                                <div style="font-size: 24px;">👤</div>
+                                <span>Профиль</span>
+                            </a>
+                        </div>
+                    </div>
+                `;
             }
-
-            // LIBRARY
-            if (view === 'library') {
-                return h('div', { style: { minHeight: '100vh', paddingBottom: '80px' } },
-                    h('div', { className: 'header' },
-                        h('div', { style: { width: '40px', height: '40px', borderRadius: '50%', background: '#494458', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' } }, '📚'),
-                        h('input', {
-                            type: 'text',
-                            placeholder: 'Поиск...',
-                            value: searchQuery,
-                            onChange: (e) => setSearchQuery(e.target.value),
-                            className: 'input',
-                            style: { flex: 1 }
-                        }),
-                        h('button', { onClick: () => setView('settings'), style: { background: 'none', border: 'none', fontSize: '20px', color: '#808080', cursor: 'pointer' } }, '⚙️'),
-                        h('button', { onClick: () => setView('new'), style: { background: 'none', border: 'none', fontSize: '24px', color: '#808080', cursor: 'pointer' } }, '➕')
-                    ),
-                    h('div', { className: 'scroll-container' },
-                        ['all', 'progress', 'completed', 'drafts'].map(tab =>
-                            h('button', {
-                                key: tab,
-                                onClick: () => setActiveTab(tab),
-                                className: 'tab' + (activeTab === tab ? ' tab-active' : ''),
-                                style: { color: activeTab === tab ? 'white' : '#808080' }
-                            }, tab === 'all' ? 'Все' : tab === 'progress' ? 'В процессе' : tab === 'completed' ? 'Завершённые' : 'Черновики')
-                        )
-                    ),
-                    h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' } },
-                        h('span', { style: { color: '#808080' } }, filtered.length + ' всего'),
-                        h('select', {
-                            value: sortBy,
-                            onChange: (e) => setSortBy(e.target.value),
-                            style: { background: '#202020', color: '#808080', border: 'none', padding: '8px 16px', borderRadius: '20px' }
-                        },
-                            h('option', { value: 'date' }, 'По дате'),
-                            h('option', { value: 'title' }, 'По названию')
-                        )
-                    ),
-                    h('div', { style: { padding: '0 16px' } },
-                        filtered.length === 0 ?
-                            h('div', { style: { textAlign: 'center', paddingTop: '80px' } },
-                                h('div', { style: { fontSize: '64px', marginBottom: '16px' } }, '📝'),
-                                h('p', { style: { color: '#808080' } }, 'Пока нет произведений')
-                            )
-                            : filtered.map(p => {
-                                let w = 0, c = 0;
-                                if (Array.isArray(p.volumes)) {
-                                    p.volumes.forEach(v => {
-                                        if (Array.isArray(v.chapters)) {
-                                            v.chapters.forEach(ch => {
-                                                if (!ch.isDraft) {
-                                                    w += ch.content.split(/\s+/).filter(x => x).length;
-                                                    c++;
-                                                }
-                                            });
-                                        }
-                                    });
-                                }
-                                return h('div', {
-                                    key: p.id,
-                                    onClick: () => openProject(p),
-                                    className: 'card',
-                                    style: { display: 'flex', gap: '12px', cursor: 'pointer' }
-                                },
-                                    p.poster ?
-                                        h('img', { src: p.poster, style: { width: '96px', height: '128px', objectFit: 'cover', borderRadius: '12px', flexShrink: 0 } })
-                                        : h('div', { style: { width: '96px', height: '128px', background: '#494458', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', flexShrink: 0 } }, '📖'),
-                                    h('div', { style: { flex: 1, minWidth: 0 } },
-                                        h('h3', { style: { color: 'white', fontWeight: 'bold', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, p.title),
-                                        h('p', { style: { fontSize: '14px', color: '#808080', marginBottom: '8px' } }, c + ' глав • ' + w + ' слов'),
-                                        p.description && h('p', { style: { fontSize: '14px', color: '#808080', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } }, p.description),
-                                        p.genres && h('div', { style: { display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' } },
-                                            p.genres.split(',').slice(0, 2).map((g, i) =>
-                                                h('span', { key: i, style: { fontSize: '12px', background: '#494458', color: 'white', padding: '4px 8px', borderRadius: '4px' } }, g.trim())
-                                            )
-                                        )
-                                    ),
-                                    h('button', { onClick: (e) => deleteProject(p.id, e), style: { background: 'none', border: 'none', fontSize: '20px', color: '#808080', cursor: 'pointer' } }, '⋮')
-                                );
-                            })
-                    ),
-                    h('div', { className: 'bottom-nav' },
-                        h('button', { className: 'nav-btn active', onClick: () => setView('library') },
-                            h('div', { style: { fontSize: '24px' } }, '📚'),
-                            h('span', null, 'Библиотека')
-                        ),
-                        h('button', { className: 'nav-btn', onClick: () => setView('profile') },
-                            h('div', { style: { fontSize: '24px' } }, '👤'),
-                            h('span', null, 'Профиль')
-                        )
-                    )
-                );
-            }
-
-            // NEW PROJECT
-            if (view === 'new') {
-                return h('div', { style: { minHeight: '100vh', padding: '16px' } },
-                    h('button', { onClick: () => setView('library'), style: { background: 'none', border: 'none', fontSize: '24px', color: '#808080', marginBottom: '16px', cursor: 'pointer' } }, '←'),
-                    h('div', { style: { maxWidth: '600px', margin: '0 auto', background: '#202020', padding: '24px', borderRadius: '16px' } },
-                        h('input', {
-                            type: 'text',
-                            placeholder: 'Название *',
-                            value: pr
+            
+            else if (state.view === 'settings') {
+                app.innerHTML = `
+                    <div style="min-height: 100vh; padding: 16px;">
+                        <button onclick="state.view='library'; render();" style="background: none; border: none; font-size: 24px; color: #808080; margin-bottom: 16px; cursor: pointer;">←</button>
+                        <div style="max-width: 600px; margin: 0 auto; background: #202020; padding: 24px; border-radius: 16px;">
+                            <div style="margin-bottom: 24px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <span>Язык:</span>
+                                    <select id="lang" style="background: #121212; color: white; padding: 8px 16px; border-radius: 8px; border: none;">
+                                        <option value="ru" ${state.language === 'ru' ? 'selected' : ''}>🇷🇺 Русский</option>
+                                        <option value="en" ${state.language === 'en' ? 'selected' : ''}>🇬🇧 English</option>
+                                        <option value="ja" ${state.language === 'ja' ? 'selected' : ''}>🇯🇵 日本語</option>
+                                        <option value="zh" ${state.language === 'zh' ? 'selected' : ''}>🇨🇳 中文</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: cen
